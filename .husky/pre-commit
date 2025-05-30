@@ -1,5 +1,3 @@
-# Edit the pre-commit hook
-cat > .husky/pre-commit << 'EOF'
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
@@ -11,7 +9,3 @@ npx lint-staged
 # Run full validation (type-check + lint + tests)
 echo "🧪 Running full validation..."
 yarn validate
-EOF
-
-# Make it executable
-chmod +x .husky/pre-commit
