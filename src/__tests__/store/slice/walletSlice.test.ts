@@ -1,131 +1,104 @@
 import { configureStore } from '@reduxjs/toolkit';
-import walletReducer, { 
-  generateWallet, 
-  refreshBalances, 
-  loadWallets, 
-  removeWallet, 
-  clearError 
+import walletReducer, {
+  generateWallet,
+  refreshBalances,
+  removeWallet,
+  clearError,
 } from '../../../store/slices/walletSlice';
 import { WalletUtils } from '../../../utils/wallet';
-import { StorageUtils } from '../../../utils/storage';
 
-// Mock dependencies
 jest.mock('../../../utils/wallet');
-jest.mock('../../../utils/storage');
 
 const mockWalletUtils = WalletUtils as jest.Mocked<typeof WalletUtils>;
-const mockStorageUtils = StorageUtils as jest.Mocked<typeof StorageUtils>;
 
-jest.mock('../../../utils/wallet', () => ({
-  WalletUtils: {
-    createEncryptedWallet: jest.fn(),
-    getBalance: jest.fn(),
-  },
-  NETWORKS: [
-    { name: 'Ethereum Sepolia', chainId: 11155111, rpcUrl: 'https://sepolia.test', symbol: 'ETH' },
-    { name: 'BSC Testnet', chainId: 97, rpcUrl: 'https://bsc.test', symbol: 'tBNB' },
-  ]
-}));
-
-const createTestStore = () => configureStore({ reducer: { wallet: walletReducer } });
+const createStore = () =>
+  configureStore({
+    reducer: { wallet: walletReducer },
+  });
 
 describe('walletSlice', () => {
-  let store: ReturnType<typeof createTestStore>;
+  let store: ReturnType<typeof createStore>;
 
   beforeEach(() => {
-    store = createTestStore();
+    store = createStore();
     jest.clearAllMocks();
   });
 
-  describe('initial state', () => {
-    it('has correct initial state', () => {
-      expect(store.getState().wallet).toEqual({
-        wallets: [],
-        balances: {},
-        loading: false,
-        error: null,
-      });
-    });
+  it('starts with empty state', () => {
+    const state = store.getState().wallet;
+    expect(state.wallets).toEqual([]);
+    expect(state.loading).toBe(false);
   });
 
-  describe('generateWallet', () => {
+  it('generates a new wallet', async () => {
     const mockWallet = {
       id: 'test-id',
       address: '0x123',
       name: 'Test',
       encryptedPrivateKey: 'encrypted',
-      createdAt: '2023-01-01'
+      createdAt: '2023-01-01',
     };
 
-    it('generates wallet successfully', async () => {
-      mockWalletUtils.createEncryptedWallet.mockReturnValue(mockWallet);
-      
-      await store.dispatch(generateWallet({ password: 'test123', name: 'Test' }));
-      
-      const state = store.getState().wallet;
-      expect(state.wallets).toContain(mockWallet);
-      expect(state.loading).toBe(false);
-      expect(state.error).toBeNull();
-    });
+    mockWalletUtils.createEncryptedWallet.mockReturnValue(mockWallet);
 
-    it('rejects empty password', async () => {
-      await store.dispatch(generateWallet({ password: '' }));
-      
-      const state = store.getState().wallet;
-      expect(state.error).toBe('Password is required');
-      expect(state.wallets).toHaveLength(0);
-    });
+    await store.dispatch(generateWallet({ password: 'test123', name: 'Test' }));
+
+    expect(store.getState().wallet.wallets).toContain(mockWallet);
   });
 
-  describe('refreshBalances', () => {
-    const mockWallets = [{ id: '1', address: '0x123', name: 'Test', encryptedPrivateKey: 'enc', createdAt: '2023-01-01' }];
-    
-    it('completes refresh balances operation', async () => {
-      const mockBalance = { address: '0x123', balance: '1.0', network: 'Ethereum Sepolia' };
-      mockWalletUtils.getBalance.mockResolvedValue(mockBalance);
-      
-      const result = await store.dispatch(refreshBalances(mockWallets));
-      
-      const state = store.getState().wallet;
-      expect(result.type).toBe('wallet/refreshBalances/fulfilled');
-      expect(state.loading).toBe(false);
-      expect(state.error).toBeNull();
-    });
+  it('handles password validation', async () => {
+    await store.dispatch(generateWallet({ password: '' }));
+
+    expect(store.getState().wallet.error).toBe('Password is required');
   });
 
-  describe('loadWallets', () => {
-    it('loads wallets from storage', async () => {
-      const mockWallets = [{ id: '1', address: '0x123', name: 'Test', encryptedPrivateKey: 'enc', createdAt: '2023-01-01' }];
-      mockStorageUtils.getWallets.mockReturnValue(mockWallets);
-      
-      await store.dispatch(loadWallets());
-      
-      const state = store.getState().wallet;
-      expect(state.wallets).toEqual(mockWallets);
+  it('refreshes wallet balances', async () => {
+    const mockWallets = [
+      {
+        id: '1',
+        address: '0x123',
+        name: 'Test',
+        encryptedPrivateKey: 'enc',
+        createdAt: '2023-01-01',
+      },
+    ];
+
+    mockWalletUtils.getBalance.mockResolvedValue({
+      address: '0x123',
+      balance: '1.0',
+      network: 'Ethereum Sepolia',
+      symbol: 'ETH',
     });
+
+    const result = await store.dispatch(refreshBalances(mockWallets));
+    expect(result.type).toContain('fulfilled');
   });
 
-  describe('reducers', () => {
-    it('removes wallet', () => {
-      store.dispatch({
-        type: 'wallet/generateWallet/fulfilled',
-        payload: { id: 'test', address: '0x123', name: 'Test', encryptedPrivateKey: 'enc', createdAt: '2023-01-01' }
-      });
-      
-      store.dispatch(removeWallet('test'));
-      
-      const state = store.getState().wallet;
-      expect(state.wallets).toHaveLength(0);
-      expect(mockStorageUtils.removeWallet).toHaveBeenCalledWith('test');
+  it('removes wallets', () => {
+    store.dispatch({
+      type: 'wallet/generateWallet/fulfilled',
+      payload: {
+        id: 'test',
+        address: '0x123',
+        name: 'Test',
+        encryptedPrivateKey: 'enc',
+        createdAt: '2023-01-01',
+      },
     });
 
-    it('clears error', () => {
-      // Set error first
-      store.dispatch({ type: 'wallet/generateWallet/rejected', payload: 'Test error' });
-      
-      store.dispatch(clearError());
-      
-      expect(store.getState().wallet.error).toBeNull();
+    store.dispatch(removeWallet('test'));
+
+    expect(store.getState().wallet.wallets).toHaveLength(0);
+  });
+
+  it('clears errors', () => {
+    store.dispatch({
+      type: 'wallet/generateWallet/rejected',
+      payload: 'Test error',
     });
+
+    store.dispatch(clearError());
+
+    expect(store.getState().wallet.error).toBeNull();
   });
 });

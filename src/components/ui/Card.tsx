@@ -1,12 +1,11 @@
 import React from 'react';
+import { CardProps } from '../types';
 
-interface CardProps {
-  children: React.ReactNode;
-  className?: string;
-  title?: string;
-}
-
-export const Card: React.FC<CardProps> = ({ children, className = '', title }) => {
+export const Card: React.FC<CardProps> = ({
+  children,
+  className = '',
+  title,
+}) => {
   return (
     <div className={`wallet-card ${className}`}>
       {title && (

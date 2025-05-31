@@ -6,13 +6,25 @@ export const NETWORKS: Network[] = [
   {
     name: 'Ethereum Sepolia',
     chainId: 11155111,
-    rpcUrl: 'https://rpc.sepolia.eth.gateway.fm', 
+    rpcUrl: 'https://rpc.sepolia.eth.gateway.fm',
+    backupRpcs: [
+      'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+      'https://eth-sepolia.public.blastapi.io',
+      'https://rpc.sepolia.org',
+      'https://sepolia.gateway.tenderly.co',
+      'https://ethereum-sepolia.publicnode.com',
+    ],
     symbol: 'ETH',
   },
   {
     name: 'BSC Testnet',
     chainId: 97,
     rpcUrl: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+    backupRpcs: [
+      'https://data-seed-prebsc-2-s1.binance.org:8545',
+      'https://bsc-testnet.public.blastapi.io',
+      'https://bsc-testnet.publicnode.com',
+    ],
     symbol: 'tBNB',
   },
 ];
@@ -40,8 +52,11 @@ export class WalletUtils {
   }
 
   static decryptWallet(wallet: Wallet, password: string): string {
-    const privateKey = CryptoUtils.decrypt(wallet.encryptedPrivateKey, password);
-    
+    const privateKey = CryptoUtils.decrypt(
+      wallet.encryptedPrivateKey,
+      password
+    );
+
     // Validate the decrypted private key
     try {
       const ethersWallet = new ethers.Wallet(privateKey);
@@ -54,27 +69,70 @@ export class WalletUtils {
     }
   }
 
-  static async getBalance(address: string, network: Network): Promise<WalletBalance> {
-    try {
-      
-      const provider = new ethers.JsonRpcProvider(network.rpcUrl);
-      const balance = await provider.getBalance(address);
-      const formattedBalance = ethers.formatEther(balance);
+  static async getBalance(
+    address: string,
+    network: Network
+  ): Promise<WalletBalance> {
+    const rpcsToTry = [network.rpcUrl, ...(network.backupRpcs || [])];
 
+    for (let i = 0; i < rpcsToTry.length; i++) {
+      const rpcUrl = rpcsToTry[i];
 
-      return {
-        address,
-        balance: formattedBalance,
-        network: network.name,
-      };
-    } catch (error) {
-      console.error(` Error fetching balance for ${address} on ${network.name}:`, error);
-      return {
-        address,
-        balance: '0',
-        network: network.name,
-      };
+      try {
+        console.log(`Trying RPC ${i + 1}/${rpcsToTry.length}: ${rpcUrl}`);
+
+        const provider = new ethers.JsonRpcProvider(rpcUrl, {
+          chainId: network.chainId,
+          name: network.name,
+        });
+
+        // Add timeout to prevent hanging
+        const balance = await Promise.race([
+          provider.getBalance(address),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('RPC timeout')), 10000)
+          ),
+        ]);
+
+        const formattedBalance = ethers.formatEther(balance);
+
+        console.log(`✅ Successfully got balance from ${rpcUrl}`);
+
+        return {
+          address,
+          balance: formattedBalance,
+          network: network.name,
+          symbol: network.symbol,
+        };
+      } catch (error) {
+        console.warn(`RPC ${rpcUrl} failed:`, error);
+
+        // If this is the last RPC, throw the error
+        if (i === rpcsToTry.length - 1) {
+          console.error(
+            `All RPCs failed for ${network.name}. Last error:`,
+            error
+          );
+
+          // Return zero balance instead of throwing to prevent app crash
+          return {
+            address,
+            balance: '0',
+            network: network.name,
+            symbol: network.symbol,
+          };
+        }
+
+        continue;
+      }
     }
+
+    return {
+      address,
+      balance: '0',
+      network: network.name,
+      symbol: network.symbol,
+    };
   }
 
   static isValidAddress(address: string): boolean {

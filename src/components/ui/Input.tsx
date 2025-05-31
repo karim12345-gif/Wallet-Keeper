@@ -1,10 +1,5 @@
 import React from 'react';
-
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-  helperText?: string;
-}
+import { InputProps } from '../types';
 
 export const Input: React.FC<InputProps> = ({
   label,
@@ -21,7 +16,7 @@ export const Input: React.FC<InputProps> = ({
           {props.required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      
+
       <input
         className={`
           block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
@@ -31,11 +26,9 @@ export const Input: React.FC<InputProps> = ({
         `}
         {...props}
       />
-      
-      {error && (
-        <p className="text-sm text-red-600">{error}</p>
-      )}
-      
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
       {helperText && !error && (
         <p className="text-sm text-gray-500">{helperText}</p>
       )}

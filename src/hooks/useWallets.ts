@@ -74,39 +74,6 @@ export const useWallets = (): UseWalletsReturn => {
     [wallets]
   );
 
-  // const refreshBalances = useCallback(async () => {
-  //   try {
-  //     setLoading(true);
-  //     setError(null);
-
-  //     const balancePromises = wallets.flatMap(wallet =>
-  //       NETWORKS.map(network =>
-  //         WalletUtils.getBalance(wallet.address, network)
-  //       )
-  //     );
-
-  //     const results = await Promise.allSettled(balancePromises);
-  //     const newBalances: Record<string, WalletBalance[]> = {};
-
-  //     results.forEach((result) => {
-  //       if (result.status === 'fulfilled') {
-  //         const balance = result.value;
-  //         if (!newBalances[balance.address]) {
-  //           newBalances[balance.address] = [];
-  //         }
-  //         newBalances[balance.address].push(balance);
-  //       }
-  //     });
-
-  //     setBalances(newBalances);
-  //   } catch (err) {
-  //     const errorMessage = err instanceof Error ? err.message : 'Failed to refresh balances';
-  //     setError(errorMessage);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }, [wallets]);
-
   const refreshBalances = useCallback(async () => {
     try {
       setLoading(true);
@@ -144,6 +111,7 @@ export const useWallets = (): UseWalletsReturn => {
       setLoading(false);
     }
   }, [wallets]);
+
   const decryptPrivateKey = useCallback(
     async (walletId: string, password: string): Promise<string> => {
       const wallet = wallets.find((w) => w.id === walletId);

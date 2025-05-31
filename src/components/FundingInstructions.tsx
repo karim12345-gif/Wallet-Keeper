@@ -1,27 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
-
-interface FundingInstructionsProps {
-  walletAddress?: string;
-}
+import { FundingInstructionsProps } from './types';
+import { FAUCETS } from '../constants';
 
 export const FundingInstructions: React.FC<FundingInstructionsProps> = ({
   walletAddress,
 }) => {
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
-  const handleCopyAddress = async () => {
-    if (walletAddress) {
-      try {
-        await navigator.clipboard.writeText(walletAddress);
-        setCopiedAddress(true);
-        setTimeout(() => setCopiedAddress(false), 2000);
-      } catch (err) {
-        console.error('Failed to copy address:', err);
+  const handleCopyAddress = useCallback(async () => {
+    if (!walletAddress) return;
+
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopiedAddress(true);
+
+      // Clear existing timeout to prevent multiple timers
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
+
+      timeoutRef.current = setTimeout(() => {
+        setCopiedAddress(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy address:', err);
     }
-  };
+  }, [walletAddress]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Card title="Get Test Funds">
@@ -33,8 +49,18 @@ export const FundingInstructions: React.FC<FundingInstructionsProps> = ({
                 Your Wallet Address:
               </label>
               <Button onClick={handleCopyAddress} size="sm" variant="secondary">
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
                 </svg>
                 {copiedAddress ? 'Copied!' : 'Copy'}
               </Button>
@@ -53,32 +79,26 @@ export const FundingInstructions: React.FC<FundingInstructionsProps> = ({
                 <span className="text-white text-sm font-bold">Ξ</span>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Ethereum Sepolia</h3>
+                <h3 className="font-semibold text-gray-900">
+                  Ethereum Sepolia
+                </h3>
                 <p className="text-xs text-gray-600">Get free Sepolia ETH</p>
               </div>
             </div>
-            
+
             <div className="space-y-2">
-              <a
-                href="https://faucets.chain.link/sepolia"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors shadow-sm"
-              >
-                ⭐ Chainlink Faucet (Recommended)
-              </a>
-              <a
-                href="https://sepolia-faucet.pk910.de"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full bg-blue-500 hover:bg-blue-600 text-white text-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors"
-              >
-                🔨 PoW Faucet (Mine for ETH)
-              </a>
-          
+              {FAUCETS.ethereum.map((faucet) => (
+                <a
+                  key={faucet.url}
+                  href={faucet.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block w-full ${faucet.className} text-white text-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors shadow-sm`}
+                >
+                  {faucet.name}
+                </a>
+              ))}
             </div>
-            
-        
           </div>
 
           {/* BSC Testnet Faucet */}
@@ -92,40 +112,41 @@ export const FundingInstructions: React.FC<FundingInstructionsProps> = ({
                 <p className="text-xs text-gray-600">Get free testnet BNB</p>
               </div>
             </div>
-            
+
             <div className="space-y-2">
-              <a
-                href="https://testnet.bnbchain.org/faucet-smart"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full bg-yellow-500 hover:bg-yellow-600 text-white text-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors shadow-sm"
-              >
-                🟡 Official BSC Faucet
-              </a>
-              <a
-                href="https://testnet.binance.org/faucet-smart"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors"
-              >
-                🔶 Alternative BSC Faucet
-              </a>
+              {FAUCETS.bsc.map((faucet) => (
+                <a
+                  key={faucet.url}
+                  href={faucet.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block w-full ${faucet.className} text-white text-center py-2.5 px-4 rounded-lg text-sm font-medium transition-colors shadow-sm`}
+                >
+                  {faucet.name}
+                </a>
+              ))}
             </div>
-      
           </div>
         </div>
-
-     
 
         {/* Warning */}
         <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
           <div className="flex">
-            <svg className="w-5 h-5 text-amber-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            <svg
+              className="w-5 h-5 text-amber-500 mr-2 mt-0.5 flex-shrink-0"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
             </svg>
             <div>
               <p className="text-sm text-amber-800">
-                <strong>Important:</strong> These are testnet tokens with no real value. Only use for development and testing purposes.
+                <strong>Important:</strong> These are testnet tokens with no
+                real value. Only use for development and testing purposes.
               </p>
             </div>
           </div>

@@ -1,7 +1,4 @@
-import { initialState, WalletState } from "./WalletState";
+import { initialState, WalletState } from './WalletState';
 
-
-
-export type { WalletState}
-export {initialState}
-
+export type { WalletState };
+export { initialState };

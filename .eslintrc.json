@@ -1,23 +1,13 @@
-// {
-//   "extends": [
-//     "react-app",
-//     "react-app/jest"
-//   ],
-//   "rules": {
-//     "no-unused-vars": "warn",
-//     "prefer-const": "error",
-//     "no-var": "error",
-//     "@typescript-eslint/no-explicit-any": "error"
-//   }
-// }
-
 {
-  "extends": [
-    "react-app",
-    "react-app/jest"
-  ],
+  "extends": ["react-app", "react-app/jest"],
   "rules": {
-    "no-unused-vars": "warn",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "varsIgnorePattern": "^(SET_|TOGGLE_|CLEAR_|RESET_|REVEAL_|HIDE_|LOADING)"
+      }
+    ],
     "prefer-const": "error",
     "no-var": "error",
     "@typescript-eslint/no-explicit-any": "error",
@@ -29,5 +19,7 @@
         }
       }
     ]
-  }
+  },
+  "noInlineConfig": true,
+  "reportUnusedDisableDirectives": true
 }
